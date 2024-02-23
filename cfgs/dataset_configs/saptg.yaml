@@ -1,0 +1,4 @@
+NAME: ShapeNet
+DATA_PATH: data/SapTreegen
+N_POINTS: 8192
+PC_PATH: data/SapTreeGen/saptg_pc

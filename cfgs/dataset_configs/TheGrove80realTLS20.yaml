@@ -1,0 +1,4 @@
+NAME: ShapeNet
+DATA_PATH: data/TheGrove80realTLS20
+N_POINTS: 8192
+PC_PATH: data/TheGrove80realTLS20/grovereal_pc
