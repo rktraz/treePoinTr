@@ -94,18 +94,33 @@ def run_net(args, config, train_writer=None, val_writer=None):
             data_time.update(time.time() - batch_start_time)
             npoints = config.dataset.train._base_.N_POINTS
             dataset_name = config.dataset.train._base_.NAME
-            if dataset_name == 'PCN' or dataset_name == 'Completion3D' or dataset_name == 'Projected_ShapeNet':
-                partial = data[0].cuda()
-                gt = data[1].cuda()
+            
+            scale = torch.rand(1).cuda() * (1.2 - 0.8) + 0.8 # create random scale factor
+            
+            if  'PCN' in dataset_name or dataset_name == 'Completion3D' or 'ProjectShapeNet' in dataset_name:
+                gt = scale*data[1].cuda()
+                partial = scale*data[0].cuda() # appply scale factor
+                
+                #filepath = data[2][0]  #data[2] stands for file_path, which is a list of filepaths
+                #print(filepath)                         
+                # if (int(filepath[-13]) % 2) == 0: # use viewpoint method on every second sample ???  
+                    # partial, _ = misc.seprate_point_cloud(gt, npoints, [int(npoints * 1/4) , int(npoints * 3/4)], fixed_points = None)
+                    # partial = partial.cuda() # ???
+                    ##print(filepath+" using viewpoint method for partial")
+                # else:
+                    # partial = data[0].cuda() # ???
+                    ##print(filepath+" using provided partial")
+                
                 if config.dataset.train._base_.CARS:
                     if idx == 0:
                         print_log('padding while KITTI training', logger=logger)
+                    # partial, gt = misc.random_scale(partial, gt) # specially for KITTI finetune
                     partial = misc.random_dropping(partial, epoch) # specially for KITTI finetune
 
-            elif dataset_name == 'ShapeNet':
-                gt = data.cuda()
+            elif 'ShapeNet' in dataset_name:
+                gt = scale*data.cuda()
                 partial, _ = misc.seprate_point_cloud(gt, npoints, [int(npoints * 1/4) , int(npoints * 3/4)], fixed_points = None)
-                partial = partial.cuda()
+                partial = scale*partial.cuda() # appply scale factor
             else:
                 raise NotImplementedError(f'Train phase do not support {dataset_name}')
 
@@ -199,10 +214,10 @@ def validate(base_model, test_dataloader, epoch, ChamferDisL1, ChamferDisL2, val
 
             npoints = config.dataset.val._base_.N_POINTS
             dataset_name = config.dataset.val._base_.NAME
-            if dataset_name == 'PCN' or dataset_name == 'Completion3D' or dataset_name == 'Projected_ShapeNet':
+            if 'PCN' in dataset_name or dataset_name == 'Completion3D' or 'ProjectShapeNet' in dataset_name:
                 partial = data[0].cuda()
                 gt = data[1].cuda()
-            elif dataset_name == 'ShapeNet':
+            elif 'ShapeNet' in dataset_name:
                 gt = data.cuda()
                 partial, _ = misc.seprate_point_cloud(gt, npoints, [int(npoints * 1/4) , int(npoints * 3/4)], fixed_points = None)
                 partial = partial.cuda()
@@ -226,7 +241,6 @@ def validate(base_model, test_dataloader, epoch, ChamferDisL1, ChamferDisL2, val
 
             test_losses.update([sparse_loss_l1.item() * 1000, sparse_loss_l2.item() * 1000, dense_loss_l1.item() * 1000, dense_loss_l2.item() * 1000])
 
-
             # dense_points_all = dist_utils.gather_tensor(dense_points, args)
             # gt_all = dist_utils.gather_tensor(gt, args)
 
@@ -243,22 +257,22 @@ def validate(base_model, test_dataloader, epoch, ChamferDisL1, ChamferDisL2, val
                 category_metrics[_taxonomy_id].update(_metrics)
 
 
-            # if val_writer is not None and idx % 200 == 0:
-            #     input_pc = partial.squeeze().detach().cpu().numpy()
-            #     input_pc = misc.get_ptcloud_img(input_pc)
-            #     val_writer.add_image('Model%02d/Input'% idx , input_pc, epoch, dataformats='HWC')
+            if val_writer is not None and idx % 200 == 0:
+                input_pc = partial.squeeze().detach().cpu().numpy()
+                input_pc = misc.get_ptcloud_img(input_pc)
+                val_writer.add_image('Model%02d/Input'% idx , input_pc, epoch, dataformats='HWC')
 
-            #     sparse = coarse_points.squeeze().cpu().numpy()
-            #     sparse_img = misc.get_ptcloud_img(sparse)
-            #     val_writer.add_image('Model%02d/Sparse' % idx, sparse_img, epoch, dataformats='HWC')
+                sparse = coarse_points.squeeze().cpu().numpy()
+                sparse_img = misc.get_ptcloud_img(sparse)
+                val_writer.add_image('Model%02d/Sparse' % idx, sparse_img, epoch, dataformats='HWC')
 
-            #     dense = dense_points.squeeze().cpu().numpy()
-            #     dense_img = misc.get_ptcloud_img(dense)
-            #     val_writer.add_image('Model%02d/Dense' % idx, dense_img, epoch, dataformats='HWC')
+                dense = dense_points.squeeze().cpu().numpy()
+                dense_img = misc.get_ptcloud_img(dense)
+                val_writer.add_image('Model%02d/Dense' % idx, dense_img, epoch, dataformats='HWC')
                 
-            #     gt_ptcloud = gt.squeeze().cpu().numpy()
-            #     gt_ptcloud_img = misc.get_ptcloud_img(gt_ptcloud)
-            #     val_writer.add_image('Model%02d/DenseGT' % idx, gt_ptcloud_img, epoch, dataformats='HWC')
+                gt_ptcloud = gt.squeeze().cpu().numpy()
+                gt_ptcloud_img = misc.get_ptcloud_img(gt_ptcloud)
+                val_writer.add_image('Model%02d/DenseGT' % idx, gt_ptcloud_img, epoch, dataformats='HWC')
         
             if (idx+1) % interval == 0:
                 print_log('Test[%d/%d] Taxonomy = %s Sample = %s Losses = %s Metrics = %s' %
@@ -272,7 +286,7 @@ def validate(base_model, test_dataloader, epoch, ChamferDisL1, ChamferDisL2, val
             torch.cuda.synchronize()
      
     # Print testing results
-    shapenet_dict = json.load(open('./data/shapenet_synset_dict.json', 'r'))
+    shapenet_dict = json.load(open('./data/trees_synset_dict.json', 'r')) # './data/shapenet_synset_dict.json', 'r'
     print_log('============================ TEST RESULTS ============================',logger=logger)
     msg = ''
     msg += 'Taxonomy\t'
@@ -350,7 +364,7 @@ def test(base_model, test_dataloader, ChamferDisL1, ChamferDisL2, args, config, 
 
             npoints = config.dataset.test._base_.N_POINTS
             dataset_name = config.dataset.test._base_.NAME
-            if dataset_name == 'PCN' or dataset_name == 'Projected_ShapeNet':
+            if  'PCN' in dataset_name or 'ProjectShapeNet' in dataset_name:
                 partial = data[0].cuda()
                 gt = data[1].cuda()
 
@@ -365,14 +379,15 @@ def test(base_model, test_dataloader, ChamferDisL1, ChamferDisL2, args, config, 
 
                 test_losses.update([sparse_loss_l1.item() * 1000, sparse_loss_l2.item() * 1000, dense_loss_l1.item() * 1000, dense_loss_l2.item() * 1000])
 
-                _metrics = Metrics.get(dense_points, gt, require_emd=True)
+                # _metrics = Metrics.get(dense_points ,gt)
                 # test_metrics.update(_metrics)
-
+                _metrics = Metrics.get(dense_points, gt, require_emd=False) # original: True
+                
                 if taxonomy_id not in category_metrics:
                     category_metrics[taxonomy_id] = AverageMeter(Metrics.names())
                 category_metrics[taxonomy_id].update(_metrics)
 
-            elif dataset_name == 'ShapeNet':
+            elif 'ShapeNet' in dataset_name:
                 gt = data.cuda()
                 choice = [torch.Tensor([1,1,1]),torch.Tensor([1,1,-1]),torch.Tensor([1,-1,1]),torch.Tensor([-1,1,1]),
                             torch.Tensor([-1,-1,1]),torch.Tensor([-1,1,-1]), torch.Tensor([1,-1,-1]),torch.Tensor([-1,-1,-1])]
@@ -394,7 +409,7 @@ def test(base_model, test_dataloader, ChamferDisL1, ChamferDisL2, args, config, 
 
                     _metrics = Metrics.get(dense_points ,gt)
 
-
+                    # test_metrics.update(_metrics)
 
                     if taxonomy_id not in category_metrics:
                         category_metrics[taxonomy_id] = AverageMeter(Metrics.names())
@@ -427,7 +442,10 @@ def test(base_model, test_dataloader, ChamferDisL1, ChamferDisL2, args, config, 
      
 
     # Print testing results
-    shapenet_dict = json.load(open('./data/shapenet_synset_dict.json', 'r'))
+    
+    results_txt = os.path.join(args.experiment_path, 'testresults.txt')
+    
+    shapenet_dict = json.load(open('./data/trees_synset_dict.json', 'r')) # './data/shapenet_synset_dict.json', 'r'
     print_log('============================ TEST RESULTS ============================',logger=logger)
     msg = ''
     msg += 'Taxonomy\t'
@@ -436,6 +454,8 @@ def test(base_model, test_dataloader, ChamferDisL1, ChamferDisL2, args, config, 
         msg += metric + '\t'
     msg += '#ModelName\t'
     print_log(msg, logger=logger)
+    with open(results_txt, 'w') as f:
+        f.write(msg+"\n")    
 
 
     for taxonomy_id in category_metrics:
@@ -446,10 +466,18 @@ def test(base_model, test_dataloader, ChamferDisL1, ChamferDisL2, args, config, 
             msg += '%.3f \t' % value
         msg += shapenet_dict[taxonomy_id] + '\t'
         print_log(msg, logger=logger)
+        with open(results_txt, 'a') as f:
+            f.write(msg+"\n") # f.write('\n'.join(msg))
 
     msg = ''
     msg += 'Overall \t\t'
     for value in test_metrics.avg():
-        msg += '%.3f \t' % value
+        msg += '%.5f \t' % value
     print_log(msg, logger=logger)
+    with open(results_txt, 'a') as f:
+        f.write(msg+"\n")
     return 
+
+    f.close()  
+        
+       

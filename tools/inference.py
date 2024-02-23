@@ -57,7 +57,7 @@ def inference_single(model, pc_path, args, config, root=None):
     # read single point cloud
     pc_ndarray = IO.get(pc_file).astype(np.float32)
     # transform it according to the model 
-    if config.dataset.train._base_['NAME'] == 'ShapeNet':
+    if config.dataset.train._base_['NAME'] == 'ShapeNet' or config.dataset.train._base_['NAME'] == 'PCN':
         # normalize it to fit the model on ShapeNet-55/34
         centroid = np.mean(pc_ndarray, axis=0)
         pc_ndarray = pc_ndarray - centroid
@@ -67,7 +67,7 @@ def inference_single(model, pc_path, args, config, root=None):
     transform = Compose([{
         'callback': 'UpSamplePoints',
         'parameters': {
-            'n_points': 2048
+            'n_points': 4048 # tried changing to: 4048
         },
         'objects': ['input']
     }, {
@@ -80,7 +80,7 @@ def inference_single(model, pc_path, args, config, root=None):
     ret = model(pc_ndarray_normalized['input'].unsqueeze(0).to(args.device.lower()))
     dense_points = ret[-1].squeeze(0).detach().cpu().numpy()
 
-    if config.dataset.train._base_['NAME'] == 'ShapeNet':
+    if config.dataset.train._base_['NAME'] == 'ShapeNet' or config.dataset.train._base_['NAME'] == 'PCN':
         # denormalize it to adapt for the original input
         dense_points = dense_points * m
         dense_points = dense_points + centroid

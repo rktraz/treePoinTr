@@ -76,6 +76,9 @@ def build_scheduler(base_model, optimizer, config, last_epoch=-1):
                 lr_min=sche_config.kwargs.min_lr,
                 warmup_t=sche_config.kwargs.initial_epochs,
                 t_in_epochs=True)
+    elif sche_config.type == 'CosLRwarmup': # ???  CosineAnnealingWarmRestartsLR
+        scheduler = torch.optim.lr_scheduler.CosineAnnealingWarmRestarts(optimizer,
+                T_0=sche_config.kwargs.t_0)
     else:
         raise NotImplementedError()
     
