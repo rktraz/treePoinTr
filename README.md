@@ -1,3 +1,17 @@
+This repository contains the PyTorch implementation for PoinTr, which was adapted for a study on point cloud completion of terrestrial laserscanning data of individual trees.
+
+The folder tree_workflow contains jupyter notebooks for:
+	- Creating training samples from individual tree point clouds (make_samples_for_treePoinTr.ipynb)
+    - Applying the completion approach to individual trees (whole_tree_completion_workflow.ipynb)
+
+The data used in the study and the models trained in the study can be downloaded from here: [link to repository]
+
+For installation, please follow the original instructions below, provided by the authors of PoinTr.
+
+
+
+
+
 # PoinTr: Diverse Point Cloud Completion with Geometry-Aware Transformers
 
 [![PWC](https://img.shields.io/endpoint.svg?url=https://paperswithcode.com/badge/pointr-diverse-point-cloud-completion-with/point-cloud-completion-on-shapenet)](https://paperswithcode.com/sota/point-cloud-completion-on-shapenet?p=pointr-diverse-point-cloud-completion-with)
