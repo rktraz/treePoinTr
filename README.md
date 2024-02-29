@@ -6,7 +6,7 @@ The folder tree_workflow contains jupyter notebooks for:
 
 The data used in the study and the models trained in the study can be downloaded from here: [link to repository]
 
-For installation, please follow the original instructions below, provided by the authors of PoinTr.
+For installation and usage, please follow the original instructions below, provided by the authors of PoinTr.
 
 
 
