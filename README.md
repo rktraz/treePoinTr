@@ -4,7 +4,7 @@ The folder tree_workflow contains jupyter notebooks for:
 - Creating training samples from individual tree point clouds (make_samples_for_treePoinTr.ipynb)
 - Applying the completion approach to individual trees (whole_tree_completion_workflow.ipynb)  
 
-The data used in the study and the models trained in the study can be downloaded from here: [link to repository]
+The data used in the study and the models trained in the study can be downloaded from Zenodo: [doi.org/10.5281/zenodo.13303159](https://doi.org/10.5281/zenodo.13303159)
 
 For installation and usage, please follow the original instructions below, provided by the authors of PoinTr.
 
