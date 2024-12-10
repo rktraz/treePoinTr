@@ -33,6 +33,11 @@ def get_args():
         default=False,
         help='whether to save img of complete point cloud') 
     parser.add_argument(
+        '--save_xyz',
+        action='store_true',
+        default=False,
+        help='whether to save .xyz file of complete point cloud')    
+    parser.add_argument(
         '--out_pc_root',
         type=str,
         default='',
@@ -55,19 +60,21 @@ def inference_single(model, pc_path, args, config, root=None):
     else:
         pc_file = pc_path
     # read single point cloud
-    pc_ndarray = IO.get(pc_file).astype(np.float32)
+    pc_ndarray = IO.get(pc_file)  #.astype(np.float32)
     # transform it according to the model 
-    if config.dataset.train._base_['NAME'] == 'ShapeNet' or config.dataset.train._base_['NAME'] == 'PCN':
+    if config.dataset.train._base_['NAME'] == 'ShapeNet' or config.dataset.train._base_['NAME'] == 'PCN' or config.dataset.train._base_['NAME'] == 'ShapeNetHull' or config.dataset.train._base_['NAME'] == 'PCNHull':
         # normalize it to fit the model on ShapeNet-55/34
+        #print("doing pc_norm")
         centroid = np.mean(pc_ndarray, axis=0)
         pc_ndarray = pc_ndarray - centroid
         m = np.max(np.sqrt(np.sum(pc_ndarray**2, axis=1)))
         pc_ndarray = pc_ndarray / m
+        pc_ndarray = pc_ndarray.astype(np.float32)
 
     transform = Compose([{
         'callback': 'UpSamplePoints',
         'parameters': {
-            'n_points': 4048 # tried changing to: 4048
+            'n_points': 2048 # tried changing to: 4048
         },
         'objects': ['input']
     }, {
@@ -80,8 +87,9 @@ def inference_single(model, pc_path, args, config, root=None):
     ret = model(pc_ndarray_normalized['input'].unsqueeze(0).to(args.device.lower()))
     dense_points = ret[-1].squeeze(0).detach().cpu().numpy()
 
-    if config.dataset.train._base_['NAME'] == 'ShapeNet' or config.dataset.train._base_['NAME'] == 'PCN':
+    if config.dataset.train._base_['NAME'] == 'ShapeNet' or config.dataset.train._base_['NAME'] == 'PCN' or config.dataset.train._base_['NAME'] == 'ShapeNetHull' or config.dataset.train._base_['NAME'] == 'PCNHull':
         # denormalize it to adapt for the original input
+        #print("undoing pc_norm")
         dense_points = dense_points * m
         dense_points = dense_points + centroid
 
@@ -89,7 +97,12 @@ def inference_single(model, pc_path, args, config, root=None):
         target_path = os.path.join(args.out_pc_root, os.path.splitext(pc_path)[0])
         os.makedirs(target_path, exist_ok=True)
 
-        np.save(os.path.join(target_path, 'fine.npy'), dense_points)
+        #np.save(os.path.join(target_path, 'fine.npy'), dense_points)
+        #np.savetxt(os.path.join(args.out_pc_root, os.path.splitext(pc_path)[0] + '_normed.xyz'), pc_ndarray, fmt="%.6f", delimiter=' ')
+        
+        if args.save_xyz:
+           np.savetxt(os.path.join(args.out_pc_root, os.path.splitext(pc_path)[0] + '_pred.xyz'), dense_points, fmt="%.6f", delimiter=' ') 
+        
         if args.save_vis_img:
             input_img = misc.get_ptcloud_img(pc_ndarray_normalized['input'].numpy())
             dense_img = misc.get_ptcloud_img(dense_points)

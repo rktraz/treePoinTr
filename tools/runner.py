@@ -10,6 +10,9 @@ from utils.AverageMeter import AverageMeter
 from utils.metrics import Metrics
 from extensions.chamfer_dist import ChamferDistanceL1, ChamferDistanceL2
 
+from rpy2.robjects.packages import importr
+import rpy2.robjects as robjects
+
 def run_net(args, config, train_writer=None, val_writer=None):
     logger = get_logger(args.log_name)
     # build dataset
@@ -72,6 +75,12 @@ def run_net(args, config, train_writer=None, val_writer=None):
         builder.resume_optimizer(optimizer, args, logger = logger)
     scheduler = builder.build_scheduler(base_model, optimizer, config, last_epoch=start_epoch-1)
 
+    # Import R's install.packages function
+    # utils = importr('utils')
+    # utils.install_packages('alphashape3d')
+    # utils.install_packages('Morpho')
+   
+
     # trainval
     # training
     base_model.zero_grad()
@@ -95,11 +104,21 @@ def run_net(args, config, train_writer=None, val_writer=None):
             npoints = config.dataset.train._base_.N_POINTS
             dataset_name = config.dataset.train._base_.NAME
             
+            # if 'ShapeNetHull' in dataset_name:
+                ##Load required R packages
+                # robjects.r('''
+                    # library(alphashape3d)
+                    # library(Morpho)
+                # ''')
+            
             scale = torch.rand(1).cuda() * (1.2 - 0.8) + 0.8 # create random scale factor
             
-            if  'PCN' in dataset_name or dataset_name == 'Completion3D' or 'ProjectShapeNet' in dataset_name:
-                gt = scale*data[1].cuda()
-                partial = scale*data[0].cuda() # appply scale factor
+            if dataset_name == 'PCN' or dataset_name == 'Completion3D' or 'ProjectShapeNet' in dataset_name:
+                #gt = scale*data[0].cuda()
+                #partial = scale*data[1].cuda() # appply scale factor
+                partial = data[1].cuda()
+                gt = data[0].cuda() 
+
                 
                 #filepath = data[2][0]  #data[2] stands for file_path, which is a list of filepaths
                 #print(filepath)                         
@@ -117,16 +136,37 @@ def run_net(args, config, train_writer=None, val_writer=None):
                     # partial, gt = misc.random_scale(partial, gt) # specially for KITTI finetune
                     partial = misc.random_dropping(partial, epoch) # specially for KITTI finetune
 
-            elif 'ShapeNet' in dataset_name:
+            elif dataset_name == 'ShapeNet':
                 gt = scale*data.cuda()
-                partial, _ = misc.seprate_point_cloud(gt, npoints, [int(npoints * 1/4) , int(npoints * 3/4)], fixed_points = None)
-                partial = scale*partial.cuda() # appply scale factor
+                #gt = data.cuda()
+                #fixed_point = torch.tensor([[0, 0, 1]]) 
+                partial, _ = misc.seprate_point_cloud(gt, npoints, [int(npoints * 1/4) , int(npoints * 3/4)], save_input=False) # 
+                #partial = scale*partial.cuda() # appply scale factor
+                partial = partial.cuda() 
+                
+            # elif 'ShapeNetHull' in dataset_name:
+                # gt = misc.points_from_ashape(data, nr_points = npoints, save_input=True, filename = "./completes/" + str(idx)).cuda()
+                # partial_input = misc.divide_and_sample_point_cloud(data)
+                # partial = misc.points_from_ashape(partial_input, nr_points = random.randrange(int(npoints * 1/4) , int(npoints * 3/4)), save_input=True, filename = "./partials/" + str(idx)).cuda() 
+            elif 'ShapeNetHull' in dataset_name:
+                #print('applying ShapeNetHull approach')
+                gt = data[0].cuda() # gt
+                partial = data[1].cuda() # partial
+                
+            elif 'PCNHull' in dataset_name:
+                #print('applying PCNHull approach')
+                gt = data[0].cuda() # gt
+                partial = data[1].cuda() # partial    
+                
             else:
                 raise NotImplementedError(f'Train phase do not support {dataset_name}')
 
             num_iter += 1
            
+           
             ret = base_model(partial)
+            print("partial.size(1): " + str(partial.size(1)))
+            print(gt.size(1))           
             
             sparse_loss, dense_loss = base_model.module.get_loss(ret, gt, epoch)
          
@@ -175,11 +215,11 @@ def run_net(args, config, train_writer=None, val_writer=None):
             scheduler.step()
         epoch_end_time = time.time()
 
-        if train_writer is not None:
-            train_writer.add_scalar('Loss/Epoch/Sparse', losses.avg(0), epoch)
-            train_writer.add_scalar('Loss/Epoch/Dense', losses.avg(1), epoch)
-        print_log('[Training] EPOCH: %d EpochTime = %.3f (s) Losses = %s' %
-            (epoch,  epoch_end_time - epoch_start_time, ['%.4f' % l for l in losses.avg()]), logger = logger)
+        #if train_writer is not None:
+            #train_writer.add_scalar('Loss/Epoch/Sparse', losses.avg(0), epoch)
+            #train_writer.add_scalar('Loss/Epoch/Dense', losses.avg(1), epoch)
+        #print_log('[Training] EPOCH: %d EpochTime = %.3f (s) Losses = %s' %
+            #(epoch,  epoch_end_time - epoch_start_time, ['%.4f' % l for l in losses.avg()]), logger = logger)
 
         if epoch % args.val_freq == 0:
             # Validate the current model
@@ -214,13 +254,23 @@ def validate(base_model, test_dataloader, epoch, ChamferDisL1, ChamferDisL2, val
 
             npoints = config.dataset.val._base_.N_POINTS
             dataset_name = config.dataset.val._base_.NAME
-            if 'PCN' in dataset_name or dataset_name == 'Completion3D' or 'ProjectShapeNet' in dataset_name:
-                partial = data[0].cuda()
-                gt = data[1].cuda()
+            if dataset_name == 'PCN' or dataset_name == 'Completion3D' or 'ProjectShapeNet' in dataset_name:
+                partial = data[1].cuda()
+                gt = data[0].cuda()
+            elif 'ShapeNetHull' in dataset_name:
+                #print_log('applying ShapeNetHull approach', logger=logger)
+                gt = data[0].cuda() # gt
+                partial = data[1].cuda() # partial  
+            elif 'PCNHull' in dataset_name:
+                #print_log('applying PCNHull approach', logger=logger)
+                gt = data[0].cuda() # gt
+                partial = data[1].cuda() # partial    
             elif 'ShapeNet' in dataset_name:
                 gt = data.cuda()
                 partial, _ = misc.seprate_point_cloud(gt, npoints, [int(npoints * 1/4) , int(npoints * 3/4)], fixed_points = None)
                 partial = partial.cuda()
+            
+                
             else:
                 raise NotImplementedError(f'Train phase do not support {dataset_name}')
 
@@ -364,9 +414,9 @@ def test(base_model, test_dataloader, ChamferDisL1, ChamferDisL2, args, config, 
 
             npoints = config.dataset.test._base_.N_POINTS
             dataset_name = config.dataset.test._base_.NAME
-            if  'PCN' in dataset_name or 'ProjectShapeNet' in dataset_name:
-                partial = data[0].cuda()
-                gt = data[1].cuda()
+            if dataset_name == 'PCN' or 'ProjectShapeNet' in dataset_name:
+                partial = data[1].cuda()
+                gt = data[0].cuda()
 
                 ret = base_model(partial)
                 coarse_points = ret[0]
@@ -387,7 +437,7 @@ def test(base_model, test_dataloader, ChamferDisL1, ChamferDisL2, args, config, 
                     category_metrics[taxonomy_id] = AverageMeter(Metrics.names())
                 category_metrics[taxonomy_id].update(_metrics)
 
-            elif 'ShapeNet' in dataset_name:
+            elif dataset_name == 'ShapeNet':
                 gt = data.cuda()
                 choice = [torch.Tensor([1,1,1]),torch.Tensor([1,1,-1]),torch.Tensor([1,-1,1]),torch.Tensor([-1,1,1]),
                             torch.Tensor([-1,-1,1]),torch.Tensor([-1,1,-1]), torch.Tensor([1,-1,-1]),torch.Tensor([-1,-1,-1])]
@@ -414,6 +464,57 @@ def test(base_model, test_dataloader, ChamferDisL1, ChamferDisL2, args, config, 
                     if taxonomy_id not in category_metrics:
                         category_metrics[taxonomy_id] = AverageMeter(Metrics.names())
                     category_metrics[taxonomy_id].update(_metrics)
+
+            elif 'ShapeNetHull' in dataset_name: # 
+                #print_log('applying ShapeNetHull approach', logger=logger)
+                gt = data[0].cuda()
+                partial = data[1].cuda() 
+                
+                ret = base_model(partial)
+                coarse_points = ret[0]
+                dense_points = ret[-1]
+
+                sparse_loss_l1 =  ChamferDisL1(coarse_points, gt)
+                sparse_loss_l2 =  ChamferDisL2(coarse_points, gt)
+                dense_loss_l1 =  ChamferDisL1(dense_points, gt)
+                dense_loss_l2 =  ChamferDisL2(dense_points, gt)
+
+                test_losses.update([sparse_loss_l1.item() * 1000, sparse_loss_l2.item() * 1000, dense_loss_l1.item() * 1000, dense_loss_l2.item() * 1000])
+
+                _metrics = Metrics.get(dense_points ,gt)
+
+                # test_metrics.update(_metrics)
+
+                if taxonomy_id not in category_metrics:
+                    category_metrics[taxonomy_id] = AverageMeter(Metrics.names())
+                category_metrics[taxonomy_id].update(_metrics)
+
+            elif 'PCNHull' in dataset_name: # 
+                #print_log('applying ShapeNetHull approach', logger=logger)
+                gt = data[0].cuda()
+                partial = data[1].cuda() 
+                
+                ret = base_model(partial)
+                coarse_points = ret[0]
+                dense_points = ret[-1]
+
+                sparse_loss_l1 =  ChamferDisL1(coarse_points, gt)
+                sparse_loss_l2 =  ChamferDisL2(coarse_points, gt)
+                dense_loss_l1 =  ChamferDisL1(dense_points, gt)
+                dense_loss_l2 =  ChamferDisL2(dense_points, gt)
+
+                test_losses.update([sparse_loss_l1.item() * 1000, sparse_loss_l2.item() * 1000, dense_loss_l1.item() * 1000, dense_loss_l2.item() * 1000])
+
+                _metrics = Metrics.get(dense_points ,gt)
+
+                # test_metrics.update(_metrics)
+
+                if taxonomy_id not in category_metrics:
+                    category_metrics[taxonomy_id] = AverageMeter(Metrics.names())
+                category_metrics[taxonomy_id].update(_metrics)           
+
+            
+                    
             elif dataset_name == 'KITTI':
                 partial = data.cuda()
                 ret = base_model(partial)
