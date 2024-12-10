@@ -1,0 +1,6 @@
+NAME: PCNHull
+DATA_PATH: data/predefhull
+N_POINTS: 8192
+PC_PATH: data/predefhull
+PARTIAL_POINTS_PATH: data/predefhull/partial
+COMPLETE_POINTS_PATH: data/predefhull/complete
