@@ -6,6 +6,8 @@ The folder tree_workflow contains jupyter notebooks for:
 
 The data used in the study and the models trained in the study can be downloaded from Zenodo: [doi.org/10.5281/zenodo.13303159](https://doi.org/10.5281/zenodo.13303159)
 
+The folder treehull_workflow contains scripts and instructions for the completion of the outer hull shape of individual trees.
+
 For installation and usage, please follow the original instructions below, provided by the authors of PoinTr.
 
 
