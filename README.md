@@ -1,5 +1,30 @@
 This repository contains the PyTorch implementation for PoinTr, which was adapted for a study on point cloud completion of terrestrial laserscanning data of individual trees.
 
+## 🚨 **GCC 11+ Compatibility Notice**
+**⚠️ This repository includes critical fixes for GCC 11+ compatibility!**
+
+If you're using **GCC 11+** or **CUDA 12+**, please follow the **[SETUP.md](SETUP.md)** guide instead of the original installation instructions below. The original installation will fail with modern compiler versions.
+
+**Quick Start:**
+```bash
+# 1. Create environment
+conda create -n treepointr_py310 python=3.10 -y
+conda activate treepointr_py310
+
+# 2. Install PyTorch 
+conda install pytorch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 pytorch-cuda=11.7 -c pytorch -c nvidia -y
+
+# 3. Install dependencies
+pip install -r requirements.txt
+
+# 4. Install CUDA extensions (with fixes!)
+bash install.sh
+```
+
+**📚 For detailed setup instructions, see [SETUP.md](SETUP.md)**
+
+---
+
 The folder tree_workflow contains jupyter notebooks for:
 - Creating training samples from individual tree point clouds (make_samples_for_treePoinTr.ipynb)
 - Applying the completion approach to individual trees (whole_tree_completion_workflow.ipynb)  
@@ -224,6 +249,31 @@ CUDA_VISIBLE_DEVICES=0,1 bash ./scripts/dist_train.sh 2 13232 \
 ### Completion Results on ShapeNet55 and KITTI-Cars
 
 ![results](fig/VisResults.gif)
+
+## 🔧 Changelog - GCC 11+ Compatibility Fixes
+
+**This fork includes the following improvements:**
+
+### Fixed Issues:
+- ✅ **GCC 11+ Compatibility**: Resolved `std::function` parameter pack expansion errors
+- ✅ **CUDA Version Mismatches**: Bypassed PyTorch's strict CUDA version checking
+- ✅ **Missing CUDA Headers**: Proper include/library path detection
+- ✅ **Runtime Library Issues**: Automatic `LD_LIBRARY_PATH` configuration
+- ✅ **Modern Compiler Support**: Automatic GCC 9 installation via conda
+
+### Enhanced Installation:
+- 🚀 **One-command install**: `bash install.sh` handles everything automatically
+- 🔍 **Environment validation**: Checks conda environment, PyTorch, CUDA availability
+- 📝 **Comprehensive logging**: Detailed error logs for debugging
+- 🛠️ **Automatic recovery**: Cleans and retries installation on failure
+
+### Files Modified:
+- `install.sh` - Enhanced installation script with environment management
+- `extensions/*/setup.py` - All 5 CUDA extensions with compatibility fixes
+- `SETUP.md` - Complete setup guide for new users
+- `README.md` - Added compatibility notices
+
+**Original TreePoinTr functionality is preserved - only installation improvements added.**
 
 ## License
 MIT License
