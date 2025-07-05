@@ -19,6 +19,9 @@ pip install -r requirements.txt
 
 # 4. Install CUDA extensions (with fixes!)
 bash install.sh
+
+# 5. Install PointNet++ (optional)
+bash install_pointnet2.sh
 ```
 
 **📚 For detailed setup instructions, see [SETUP.md](SETUP.md)**
@@ -270,6 +273,9 @@ CUDA_VISIBLE_DEVICES=0,1 bash ./scripts/dist_train.sh 2 13232 \
 ### Files Modified:
 - `install.sh` - Enhanced installation script with environment management
 - `extensions/*/setup.py` - All 5 CUDA extensions with compatibility fixes
+- `external_deps/Pointnet2_PyTorch/pointnet2_ops_lib/setup.py` - PointNet++ compatibility fixes
+- `install_pointnet2.sh` - PointNet++ installation script
+- `test_installation.py` - Comprehensive installation testing
 - `SETUP.md` - Complete setup guide for new users
 - `README.md` - Added compatibility notices
 

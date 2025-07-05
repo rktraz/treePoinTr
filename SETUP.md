@@ -36,7 +36,13 @@ pip install -r requirements.txt
 bash install.sh
 ```
 
-### 6. Verify Installation
+### 6. Install PointNet++ (Optional)
+```bash
+# Install PointNet++ with GCC 11+ compatibility fixes
+bash install_pointnet2.sh
+```
+
+### 7. Verify Installation
 ```bash
 # Run the comprehensive test script
 python test_installation.py
@@ -45,6 +51,12 @@ python test_installation.py
 python -c "
 import chamfer, cubic_feature_sampling, gridding, gridding_distance, emd
 print('✅ All CUDA extensions imported successfully!')
+"
+
+# Test PointNet++ if installed
+python -c "
+import pointnet2_ops
+print('✅ PointNet++ imported successfully!')
 "
 ```
 
