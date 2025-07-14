@@ -36,7 +36,17 @@ def get_args():
         '--save_xyz',
         action='store_true',
         default=False,
-        help='whether to save .xyz file of complete point cloud')    
+        help='whether to save .xyz file of complete point cloud')
+    parser.add_argument(
+        '--save_ply',
+        action='store_true',
+        default=False,
+        help='whether to save .ply file of complete point cloud')
+    parser.add_argument(
+        '--save_npy',
+        action='store_true',
+        default=False,
+        help='whether to save .npy file of complete point cloud (required for tree workflow)')    
     parser.add_argument(
         '--out_pc_root',
         type=str,
@@ -47,7 +57,7 @@ def get_args():
         '--device', default='cuda:0', help='Device used for inference')
     args = parser.parse_args()
 
-    assert args.save_vis_img or (args.out_pc_root != '')
+    assert args.save_vis_img or args.save_xyz or args.save_ply or args.save_npy or (args.out_pc_root != '')
     assert args.model_config is not None
     assert args.model_checkpoint is not None
     assert (args.pc != '') or (args.pc_root != '')
@@ -97,11 +107,20 @@ def inference_single(model, pc_path, args, config, root=None):
         target_path = os.path.join(args.out_pc_root, os.path.splitext(pc_path)[0])
         os.makedirs(target_path, exist_ok=True)
 
-        #np.save(os.path.join(target_path, 'fine.npy'), dense_points)
+        if args.save_npy:
+            np.save(os.path.join(target_path, 'fine.npy'), dense_points)
         #np.savetxt(os.path.join(args.out_pc_root, os.path.splitext(pc_path)[0] + '_normed.xyz'), pc_ndarray, fmt="%.6f", delimiter=' ')
         
         if args.save_xyz:
            np.savetxt(os.path.join(args.out_pc_root, os.path.splitext(pc_path)[0] + '_pred.xyz'), dense_points, fmt="%.6f", delimiter=' ') 
+        
+        if args.save_ply:
+            import open3d as o3d
+            # Create Open3D point cloud
+            pcd = o3d.geometry.PointCloud()
+            pcd.points = o3d.utility.Vector3dVector(dense_points)
+            # Save as PLY file  
+            o3d.io.write_point_cloud(os.path.join(args.out_pc_root, os.path.splitext(pc_path)[0] + '_pred.ply'), pcd)
         
         if args.save_vis_img:
             input_img = misc.get_ptcloud_img(pc_ndarray_normalized['input'].numpy())

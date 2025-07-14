@@ -222,7 +222,15 @@ def get_ptcloud_img(ptcloud):
     ax.scatter(x, y, z, zdir='z', c=x, cmap='jet')
 
     fig.canvas.draw()
-    img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+    # Handle matplotlib version compatibility
+    try:
+        # For older matplotlib versions
+        img = np.fromstring(fig.canvas.tostring_rgb(), dtype=np.uint8, sep='')
+    except AttributeError:
+        # For newer matplotlib versions (3.0+)
+        img = np.frombuffer(fig.canvas.buffer_rgba(), dtype=np.uint8)
+        img = img.reshape(fig.canvas.get_width_height()[::-1] + (4, ))
+        img = img[:, :, :3]  # Remove alpha channel to get RGB
     img = img.reshape(fig.canvas.get_width_height()[::-1] + (3, ))
     plt.close()
     return img

@@ -28,9 +28,124 @@ bash install_pointnet2.sh
 
 ---
 
+## 🌲 **Tree Completion Workflow**
+
+**NEW: One-Command Tree Completion Script!** 🚀
+
+We've created a streamlined Python script that replaces the complex notebook workflow:
+
+```bash
+# Simple usage - complete any tree PLY file
+python complete_tree.py your_tree.ply
+
+# Example with actual file
+python complete_tree.py /path/to/my_tree_lidar.ply
+```
+
+### **Script Features:**
+- **✅ Configurable models** - Choose between tree-specific trained models
+- **✅ Adjustable cube sizes** - Optimize processing for your tree size
+- **✅ Data augmentation control** - Enable/disable flipped versions
+- **✅ Multiple output formats** - PLY, XYZ, NPY support
+- **✅ Organized results** - Timestamped folders with clear structure
+- **✅ Comprehensive configuration** - All parameters easily adjustable
+
+### **Available Tree Models:**
+
+| Model | Best For | Training Data | Performance |
+|-------|----------|---------------|-------------|
+| `AdaPoinTr_tree_grove_real.pth` | **Most trees** ⭐ | Mixed simulated + real TLS | High quality, versatile |
+| `AdaPoinTr_tree_real_only.pth` | Pure TLS data | Real TLS only | Best for authentic TLS characteristics |
+| `AdaPoinTr_PCN.pth` | General objects | Synthetic objects | Not tree-specific |
+| `PoinTr_ShapeNet55.pth` | General objects | Synthetic objects | Not tree-specific |
+
+### **Easy Configuration:**
+Edit the configuration section in `complete_tree.py` to customize:
+
+```python
+# MODEL SELECTION - Choose your trained model
+MODEL_CHECKPOINT = "ckpts/AdaPoinTr_tree_grove_real.pth"  # Best for mixed trees
+# MODEL_CHECKPOINT = "ckpts/AdaPoinTr_tree_real_only.pth"  # Best for pure TLS
+
+# CUBE SIZES - Adjust processing granularity  
+CUBE_SIZE_1 = 1.0    # Smaller = more detail, longer processing
+CUBE_SIZE_2 = 1.0    # Larger = faster, less detail
+CUBE_SIZE_3 = 1.25   
+CUBE_SIZE_4 = 1.8    
+
+# DATA AUGMENTATION
+ENABLE_FLIPPING = True  # Better quality but 2x processing time
+
+# OUTPUT OPTIONS
+SAVE_NPY = True          # Required for concatenation
+SAVE_PLY = False         # Individual cube results as PLY
+SEPARATE_FLIPPED = True  # Save flipped version separately
+COMBINE_ALL = False      # Merge normal + flipped into one file
+
+# PERFORMANCE TUNING
+GPU_DEVICE = "cuda:0"           # GPU to use
+TARGET_POINTS_PER_CUBE = 8192   # Output density per cube
+```
+
+### **Usage Examples:**
+
+```bash
+# Quick completion with default settings (recommended for most users)
+python complete_tree.py my_tree.ply
+
+# For high-quality TLS data (edit script to use AdaPoinTr_tree_real_only.pth)
+python complete_tree.py precise_tls_tree.ply
+
+# For large trees (edit script to use larger cube sizes: 1.5, 1.5, 2.0, 2.5)
+python complete_tree.py large_tree.ply
+
+# For detailed small trees (edit script to use smaller cubes: 0.5, 0.5, 0.75, 1.0)
+python complete_tree.py small_detailed_tree.ply
+```
+
+### **Output Structure:**
+```
+inference_runs/
+└── 20250705_143022_run/
+    ├── my_tree_completed.ply              # Main result ⭐
+    ├── my_tree_completed_withflips.ply    # Augmented result  
+    ├── cubes/                             # Processing chunks
+    └── inference_results/                 # Raw AI outputs
+```
+
+### **🔧 Improved Coverage (NEW!):**
+
+**Problem Fixed**: The original algorithm had strict point count filtering (500-1000+ points per cube) that excluded many tree parts, especially trunks and sparse areas.
+
+**Solution**: New improved cube cutting with configurable parameters:
+
+```python
+# IMPROVED CUBE CUTTING PARAMETERS
+USE_IMPROVED_CUTTING = True     # Use improved method (recommended)
+MIN_POINTS_IN_CUBE = 100        # Much lower threshold (was 500-1000)
+MAX_POINTS_IN_CUBE = 8192       # Matches model training data
+TARGET_POINTS_DOWNSAMPLE = 3000 # Smart downsampling for dense areas
+```
+
+**Benefits**:
+- ✅ **Complete tree coverage** - processes trunk, branches, and sparse areas
+- ✅ **Better point preservation** - less aggressive filtering
+- ✅ **Smart downsampling** - preserves structure in dense areas
+- ✅ **Configurable thresholds** - adjust for your specific data
+
+### **Performance Tips:**
+- **Faster processing**: Disable flipping, use larger cubes (1.5m+), set `MIN_POINTS_IN_CUBE = 200`
+- **Higher quality**: Enable flipping, use smaller cubes (0.5-1.0m), set `MIN_POINTS_IN_CUBE = 50`
+- **Memory issues**: Reduce `MAX_POINTS_IN_CUBE` to 4096, `TARGET_POINTS_DOWNSAMPLE` to 2000
+- **Dense scans**: Increase `TARGET_POINTS_DOWNSAMPLE` to 4000+ for high-resolution data
+- **Sparse scans**: Decrease `MIN_POINTS_IN_CUBE` to 50 for incomplete trees
+- **Multiple trees**: Process them in sequence to avoid memory conflicts
+
+### **Original Workflow (Advanced Users):**
+
 The folder tree_workflow contains jupyter notebooks for:
 - Creating training samples from individual tree point clouds (make_samples_for_treePoinTr.ipynb)
-- Applying the completion approach to individual trees (whole_tree_completion_workflow.ipynb)  
+- Manual completion approach to individual trees (whole_tree_completion_workflow.ipynb)  
 
 The data used in the study and the models trained in the study can be downloaded from Zenodo: [doi.org/10.5281/zenodo.13303159](https://doi.org/10.5281/zenodo.13303159)
 
@@ -143,11 +258,11 @@ ${POINTR_CONFIG_FILE} ${POINTR_CHECKPOINT_FILE} \
 
 For example, inference all samples under `demo/` and save the results under `inference_result/`
 ```
-python tools/inference.py \
+python3 tools/inference.py \
 cfgs/PCN_models/AdaPoinTr.yaml ckpts/AdaPoinTr_PCN.pth \
 --pc_root demo/ \ 
 --save_vis_img  \
---out_pc_root inference_result/ \
+--out_pc_root inference_results/ 
 ```
 
 ### Evaluation

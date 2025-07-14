@@ -10,8 +10,16 @@ from utils.AverageMeter import AverageMeter
 from utils.metrics import Metrics
 from extensions.chamfer_dist import ChamferDistanceL1, ChamferDistanceL2
 
-from rpy2.robjects.packages import importr
-import rpy2.robjects as robjects
+# Optional R integration - only needed for specific dataset processing
+try:
+    from rpy2.robjects.packages import importr
+    import rpy2.robjects as robjects
+    R_AVAILABLE = True
+except ImportError:
+    print("Warning: rpy2 not available. R-based dataset processing disabled.")
+    importr = None
+    robjects = None
+    R_AVAILABLE = False
 
 def run_net(args, config, train_writer=None, val_writer=None):
     logger = get_logger(args.log_name)
